@@ -1,0 +1,14 @@
+[project]
+name = "llm"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dotenv>=0.9.9",
+    "dspy>=3.1.2",
+    "google-genai>=1.60.0",
+    "pgvector>=0.4.2",
+    "pypdf>=6.6.0",
+    "sqlalchemy>=2.0.46",
+]
