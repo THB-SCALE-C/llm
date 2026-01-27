@@ -5,13 +5,13 @@ from dspy.utils.callback import BaseCallback
 from openai import OpenAI
 import requests
 from llm.lib.url import OPENROUTER_BASE_URL
-from llm.lib.utils import get_provider_key
+from llm.lib.utils import get_logger, get_provider_key
 from llm.provider.base.dspy_lm_base import DspyLM
 from llm.provider.base.embedding_model import BaseEmbeddingModel
 
 
 class OpenrouterEmbeddingModel(BaseEmbeddingModel):
-    def __init__(self, model: str, key=None) -> None:
+    def __init__(self, model: str="sentence-transformers/all-minilm-l12-v2", key=None) -> None:
         super().__init__("openrouter", model, key)
 
     def _embed(self, input: str | list[str]) -> list[list[float]]:
@@ -31,6 +31,7 @@ class OpenrouterEmbeddingModel(BaseEmbeddingModel):
                 "encoding_format": "float"
             })
         )
+        get_logger().debug(response.json())
         return [d["embedding"] for d in response.json()["data"]]
 
 
