@@ -20,8 +20,8 @@ def create_embeddings(documents: list[str] | None = None,
                       separator: str = r"\n\n",
                       embedding_model:str="sentence-transformers/all-minilm-l12-v2",
                       embedding_provider:str="openrouter",
+                      client = get_supabase(),
                       logger = get_logger()):
-    client = get_supabase()
     if documents:
         if folder:
             file_paths = [str(folder / d) for d in documents]
@@ -72,7 +72,7 @@ def create_embeddings(documents: list[str] | None = None,
         logger.debug(f"created {len(sections)} sections.")
         if sections:
             res = upload_document_sections(sections=sections,client=client)
-            logger.debug(f"superbase responded opn upload: {res}")
+            logger.debug(f"superbase responded on upload: {res}")
 
 def _raise_matching_error(text1, text2):
     if text1 == text2:

@@ -1,27 +1,28 @@
 import os
 from typing import TypedDict
 from dotenv import load_dotenv
-from openai import BaseModel
 from supabase.client import Client
 from supabase.lib.client_options import SyncClientOptions
 from llm.lib.types import Section
 
+def ensure_env():
+    load_dotenv()
 
-load_dotenv()
+    KEY = os.getenv("SUPABASE_API_KEY", "")
+    if not KEY:
+        raise RuntimeError("Supabase key is not provided.")
 
-KEY = os.getenv("SUPABASE_API_KEY", "")
-if not KEY:
-    raise RuntimeError("Supabase key is not provided.")
-
-URL = os.getenv("SUPABASE_API_URL", "")
-if not URL:
-    raise RuntimeError("Supabase URL is not provided.")
+    URL = os.getenv("SUPABASE_API_URL", "")
+    if not URL:
+        raise RuntimeError("Supabase URL is not provided.")
+    return URL,KEY
 
 SCHEMA = os.getenv("DB_SCHEMA", "llm")
 STORAGE_BUCKET = os.getenv("STORAGE_BUCKET", "")
 
 
 def get_supabase() -> Client:
+    URL,KEY = ensure_env()
     client: Client = Client(URL, KEY, options=SyncClientOptions(schema=SCHEMA))
     return client
 
@@ -58,3 +59,15 @@ def query_vector_db(query_embedding: list[float], client: Client = get_supabase(
             **({"document_ids": document_ids, } if document_ids else {})
         }
     ).execute().data  # type: ignore
+
+
+def query_text_search(query:str, client: Client = get_supabase()):
+    """
+    Docstring for query_text_search
+    
+    :param query: Example = "'phishing' & 'malware'"; use & or | as logical operators
+    :type query: str
+    :param client: supabase_client
+    :type client: Client
+    """
+    return client.from_("document_sections").select("*").text_search("content",query).execute().data
