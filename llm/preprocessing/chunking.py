@@ -7,23 +7,40 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitte
 
 class Chunk(BaseModel):
     text: str
-    page_number: int
+    meta:dict
 
 
-def pdf_buffer_to_pages(buffer: bytes) -> Generator[Chunk]:
+def pdf_buffer_to_pages(buffer: bytes,meta:dict={}) -> Generator[Chunk]:
     pdf_stream = BytesIO(buffer)
     reader = PdfReader(pdf_stream)
     for i, page in enumerate(reader.pages, start=1):
-        yield Chunk(page_number=i, text=page.extract_text())
+        meta = {**meta, "page_number":i}
+        yield Chunk(meta=meta, text=page.extract_text())
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=450, chunk_overlap=50)
+splitter = RecursiveCharacterTextSplitter(separators=["\n\n",".","?","!"],chunk_size=450, chunk_overlap=50)
 
-def pdf_buffer_to_chunks(buffer:bytes, separator:str|re.Pattern[str]|TextSplitter = splitter) -> Generator[Chunk]:
-    pages = pdf_buffer_to_pages(buffer)
-    return _to_chunks(list(pages), separator)
+def pdf_buffer_to_chunks(buffer:bytes, separator:str|re.Pattern[str]|TextSplitter = splitter, meta:dict={}) -> List[Chunk]:
+    pages = pdf_buffer_to_pages(buffer, meta=dict(**meta))
+    return list(_to_chunks(list(pages), separator))
 
-def split_pages(texts:list[Chunk], separator:str|re.Pattern[str]|TextSplitter = splitter) -> Generator[Chunk]:
-    return _to_chunks(texts, separator)
+
+def txt_buffer_to_chunks(
+    buffer: bytes,
+    separator: str | re.Pattern[str] | TextSplitter = splitter,
+    meta: dict = {},
+) -> List[Chunk]:
+    text = buffer.decode("utf-8", errors="ignore")
+    if not text:
+        return []
+    return list(_to_chunks([Chunk(text=text, meta=dict(**meta))], separator))
+
+
+def md_buffer_to_chunks(
+    buffer: bytes,
+    separator: str | re.Pattern[str] | TextSplitter = splitter,
+    meta: dict = {},
+) -> List[Chunk]:
+    return txt_buffer_to_chunks(buffer, separator=separator, meta=meta)
 
 ##########
 
@@ -36,12 +53,12 @@ def _to_chunks(pages:List[Chunk],separator:str|re.Pattern[str]|TextSplitter = sp
             enhanced_page_text = _enhance_page_text(i, pages)
             splits =  separator.split_text(enhanced_page_text)
             for split in splits:
-                yield Chunk(text=split, page_number=page.page_number)
+                yield Chunk(text=split, meta=page.meta)
 
     else:
         for page in pages:
             for chunk in re.split(separator,page.text):
-                yield Chunk(text=chunk, page_number=page.page_number)
+                yield Chunk(text=chunk, meta=page.meta)
 
 def _enhance_page_text(idx, pages:List[Chunk]):
     text = pages[idx].text
