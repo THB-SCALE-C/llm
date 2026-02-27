@@ -113,7 +113,7 @@ def create_embeddings_from_chunked_documents(
     docs = []
     for doc in chunked_documents:  
         embeddings = model.embed([chunk.text for chunk in doc.chunks])
-        secs=_build_sections(list(doc.chunks), embeddings, id)
+        secs=_build_sections(list(doc.chunks), embeddings, doc.id)
         docs.append(EmbeddedDocument(id=doc.id, sections=secs, meta=doc.meta))
         logger.debug(f"created {len(secs)} sections.")
     return docs

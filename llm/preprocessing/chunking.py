@@ -97,10 +97,11 @@ def create_chunks_from_local_documents(
         else:
             chunker = txt_buffer_to_chunks
 
+        meta = dict(**(meta if include_meta_in_chunks else {}), document_id=i)
         if separator:
-            chunks,_meta = chunker(doc, separator, include_meta_in_chunks and meta, )
+            chunks,_meta = chunker(doc, separator, meta, )
         else:
-            chunks,_meta = chunker(doc, meta=include_meta_in_chunks and meta)
+            chunks,_meta = chunker(doc, meta= meta)
         if not chunks:
             logger.debug(f"document with id {i} produced no chunks. Skipping...")
             continue
@@ -111,7 +112,7 @@ def create_chunks_from_local_documents(
 ##########
 
 
-def _to_chunks(pages: List[Chunk], separator: str | re.Pattern[str] | TextSplitter = splitter):
+def _to_chunks(pages: List[Chunk], separator: str | re.Pattern[str] | TextSplitter = splitter, meta={}):
     if not separator:
         raise ValueError("Must contain separators.")
 
@@ -122,7 +123,7 @@ def _to_chunks(pages: List[Chunk], separator: str | re.Pattern[str] | TextSplitt
         else:
             splits = re.split(separator, page.text)
         for j, split in enumerate(splits):
-            yield Chunk(id=f"{i}-{j}", text=split, meta={"document_id": page.id, **page.meta})
+            yield Chunk(id=f"{i}-{j}", text=split, meta=dict(**meta, **page.meta, page_number=i))
 
 
 def _enhance_page_text(idx, pages: List[Chunk]):
