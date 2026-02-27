@@ -6,3 +6,8 @@ class Section(BaseModel):
     content:str
     embedding:list[float]
     meta:dict={}
+
+class Document(BaseModel):
+    id:str|int
+    sections:list[Section]
+    meta:dict = {}

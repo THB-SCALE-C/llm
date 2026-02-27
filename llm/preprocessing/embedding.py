@@ -8,7 +8,7 @@ from typing import Any, Callable, Generator, List, Tuple
 from dotenv import load_dotenv
 from langchain_text_splitters import TextSplitter
 from supabase import Client
-from llm.lib.types import Section
+from llm.lib.types import Document, Section
 from llm.lib.utils import get_logger
 from llm.preprocessing.chunking import Chunk, md_buffer_to_chunks, pdf_buffer_to_chunks, txt_buffer_to_chunks
 from llm.provider import get_embedding_model
@@ -56,7 +56,7 @@ def create_embeddings_from_db(
     client: Client | None = None,
     logger: Logger | None = None,
     skip_existing_embeddings:bool=True,
-) -> List[Section]:
+) -> List[Document]:
     """Create embeddings for documents and upload section rows to Supabase."""
     from llm.lib.supabase import get_documents_buffers, get_supabase
     client = client or get_supabase()
@@ -71,7 +71,7 @@ def create_embeddings_from_db(
     embedded_document_ids = _fetch_embedded_document_ids(client, [doc["id"] for doc in docs])
     model = get_embedding_model(embedding_provider, embedding_model)
 
-    sections = []
+    _docs = []
     for doc, buffer in zip(docs, buffers):
         document_id = doc["id"]
         if skip_existing_embeddings and document_id in embedded_document_ids:
@@ -98,10 +98,10 @@ def create_embeddings_from_db(
             continue
 
         embeddings = model.embed([chunk.text for chunk in chunks])
-        _sections = _build_sections(chunks, embeddings, document_id)
-        logger.debug(f"created {len(_sections)} sections.")
-        sections.extend(_sections)
-    return sections
+        secs = _build_sections(chunks, embeddings, document_id)
+        _docs.append(Document(id=document_id, sections=secs, meta={**doc, }))
+        logger.debug(f"created {len(secs)} sections.")
+    return _docs
 
 def load_local_documents(path: Path, expected_extensions: set[str]) -> List[Tuple[bytes, dict]]:
     loaded_documents = []
@@ -127,14 +127,15 @@ def create_embeddings_from_local_documents(
     embedding_model: str = "sentence-transformers/all-minilm-l12-v2",
     embedding_provider: str = "openrouter",
     logger: Logger | None = None,
-) -> List[Section]:
+    include_meta_in_chunks:bool=False
+) -> list[Document]:
     """Create embeddings for local .pdf, .md and .txt documents."""
     logger = logger or get_logger()
     model = get_embedding_model(embedding_provider, embedding_model)
 
     path = Path(document_folder)
     loaded_documents: list = load_local_documents(path, {".pdf", ".md", ".txt"})
-    sections = []
+    docs = []
     for i,(doc,meta) in enumerate(loaded_documents):
         suffix = Path(meta.get("name", "")).suffix.lower()
         if suffix == ".pdf":
@@ -145,18 +146,18 @@ def create_embeddings_from_local_documents(
             chunker = txt_buffer_to_chunks
 
         if separator:
-            chunks = chunker(doc, separator, meta)
+            chunks = chunker(doc, separator, include_meta_in_chunks and meta, )
         else:
-            chunks = chunker(doc, meta=meta)
+            chunks = chunker(doc, meta=include_meta_in_chunks and meta)
         if not chunks:
             logger.debug(f"document with id {i} produced no chunks. Skipping...")
             continue
         
         embeddings = model.embed([chunk.text for chunk in chunks])
         secs=_build_sections(list(chunks), embeddings, i)
-        sections.extend(secs)
-        logger.debug(f"created {len(sections)} sections.")
-    return sections
+        docs.append(Document(id=i, sections=secs, meta=meta))
+        logger.debug(f"created {len(secs)} sections.")
+    return docs
 
 
 
