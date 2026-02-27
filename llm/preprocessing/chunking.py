@@ -115,7 +115,7 @@ def create_chunks_from_local_documents(
 def _to_chunks(pages: List[Chunk], separator: str | re.Pattern[str] | TextSplitter = splitter, meta={}):
     if not separator:
         raise ValueError("Must contain separators.")
-
+    _chunks = []
     for i, page in enumerate(pages):
         enhanced_page_text = _enhance_page_text(i, pages)
         if isinstance(separator, TextSplitter):
@@ -123,8 +123,9 @@ def _to_chunks(pages: List[Chunk], separator: str | re.Pattern[str] | TextSplitt
         else:
             splits = re.split(separator, page.text)
         for j, split in enumerate(splits):
-            yield Chunk(id=f"{i}-{j}", text=split, meta=dict(**meta, **page.meta, page_number=i))
-
+            if split:
+                _chunks.append(Chunk(id=f"{i}-{j}", text=split, meta=dict(**meta, **page.meta, page_number=i)))
+    return _chunks
 
 def _enhance_page_text(idx, pages: List[Chunk]):
     text = pages[idx].text

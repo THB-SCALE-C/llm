@@ -29,7 +29,11 @@ class BaseEmbeddingModel(ABC):
         if step and isinstance(input, list):
             for i in range(0, len(input), step):
                 _texts = input[i:i+step]
-                embeddings = self._embed(_texts)
+                try:
+                    embeddings = self._embed(_texts)
+                except Exception as e:
+                    print(e)
+                    embeddings = []
                 _all.extend(embeddings)
         _all = self._embed(input)
         if isinstance(input, str):

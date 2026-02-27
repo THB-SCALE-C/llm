@@ -20,7 +20,6 @@ class OpenrouterEmbeddingModel(BaseEmbeddingModel):
                 "Authorization": f"Bearer {self.key}",
                 "Content-Type": "application/json"
             },
-
         }
         response = requests.post(
             **config,
