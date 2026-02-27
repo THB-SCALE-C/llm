@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter
 
+from llm.lib.types import Chunk, ChunkedDocument
 from llm.lib.utils import get_logger
 
 
@@ -26,12 +27,6 @@ def load_local_documents(path: Path, expected_extensions: set[str]) -> List[Tupl
                 loaded_documents.append((f.read(), meta))
     _recursively_load_files(path, loaded_documents)
     return loaded_documents
-
-
-class Chunk(BaseModel):
-    id: int | str
-    text: str
-    meta: dict
 
 
 def pdf_buffer_to_pages(buffer: bytes, meta: dict = {}) -> Generator[Chunk]:
@@ -86,7 +81,7 @@ def create_chunks_from_local_documents(
     separator:str|re.Pattern[str]|TextSplitter|None = None,
     logger: Logger | None = None,
     include_meta_in_chunks:bool=False
-) -> list[dict]:
+) -> list[ChunkedDocument]:
     """Create chunks for local .pdf, .md and .txt documents."""
     logger = logger or get_logger()
 
@@ -109,7 +104,7 @@ def create_chunks_from_local_documents(
         if not chunks:
             logger.debug(f"document with id {i} produced no chunks. Skipping...")
             continue
-        docs.append(dict(id=i, chunks=chunks, meta={**meta,**_meta}))
+        docs.append(ChunkedDocument(id=i, chunks=chunks, meta={**meta,**_meta}))
         logger.debug(f"created {len(chunks)} chunks.")
     return docs
 
