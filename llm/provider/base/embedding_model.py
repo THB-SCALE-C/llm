@@ -26,7 +26,7 @@ class BaseEmbeddingModel(ABC):
 
     def embed(self, input: str | list[str], step: int | None = None) -> list[Embedding]:
         _all = []
-        if step and isinstance(input, list):
+        if step: 
             for i in range(0, len(input), step):
                 _texts = input[i:i+step]
                 try:
@@ -35,9 +35,10 @@ class BaseEmbeddingModel(ABC):
                     print(e)
                     embeddings = []
                 _all.extend(embeddings)
-        elif isinstance(input, str):
-            input = [input]
+        else:
             try:
+                if isinstance(input, str):
+                    input = [input]
                 _all = self._embed(input)
             except Exception as e:
                 print(e)
