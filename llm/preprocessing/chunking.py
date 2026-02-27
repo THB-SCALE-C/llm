@@ -6,6 +6,7 @@ from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter
 
 class Chunk(BaseModel):
+    id: int|str 
     text: str
     meta:dict
 
@@ -15,7 +16,7 @@ def pdf_buffer_to_pages(buffer: bytes,meta:dict={}) -> Generator[Chunk]:
     reader = PdfReader(pdf_stream)
     for i, page in enumerate(reader.pages, start=1):
         meta = {**meta, "page_number":i}
-        yield Chunk(meta=meta, text=page.extract_text())
+        yield Chunk(id=i,meta=meta, text=page.extract_text())
 
 splitter = RecursiveCharacterTextSplitter(separators=["\n\n",".","?","!"],chunk_size=450, chunk_overlap=50)
 
@@ -32,7 +33,7 @@ def txt_buffer_to_chunks(
     text = buffer.decode("utf-8", errors="ignore")
     if not text:
         return []
-    return list(_to_chunks([Chunk(text=text, meta=dict(**meta))], separator))
+    return list(_to_chunks([Chunk(id=0,text=text, meta=dict(**meta))], separator))
 
 
 def md_buffer_to_chunks(
@@ -40,7 +41,14 @@ def md_buffer_to_chunks(
     separator: str | re.Pattern[str] | TextSplitter = splitter,
     meta: dict = {},
 ) -> List[Chunk]:
-    return txt_buffer_to_chunks(buffer, separator=separator, meta=meta)
+    text = buffer.decode("utf-8", errors="ignore")
+    if not text:
+        return []
+    if text.startswith("---"):
+        _,meta_str,*rest = text.split("---") 
+        meta = {**meta, **dict([line.split(":") for line in meta_str.split("\n") if ":" in line])}
+        text = "---".join(rest)
+    return list(_to_chunks([Chunk(id=0,text=text, meta=dict(**meta))], separator))
 
 ##########
 
@@ -48,17 +56,15 @@ def _to_chunks(pages:List[Chunk],separator:str|re.Pattern[str]|TextSplitter = sp
     if not separator:
         raise ValueError("Must contain separators.")
         
-    if isinstance(separator, TextSplitter):
-        for i,page in enumerate(pages):
-            enhanced_page_text = _enhance_page_text(i, pages)
+    for i,page in enumerate(pages):
+        enhanced_page_text = _enhance_page_text(i, pages)
+        if isinstance(separator, TextSplitter):
             splits =  separator.split_text(enhanced_page_text)
-            for split in splits:
-                yield Chunk(text=split, meta=page.meta)
+        else:
+            splits = re.split(separator,page.text)
+        for j,split in enumerate(splits):
+            yield Chunk(id=f"{i}-{j}",text=split, meta=page.meta)
 
-    else:
-        for page in pages:
-            for chunk in re.split(separator,page.text):
-                yield Chunk(text=chunk, meta=page.meta)
 
 def _enhance_page_text(idx, pages:List[Chunk]):
     text = pages[idx].text
