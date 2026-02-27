@@ -35,8 +35,12 @@ class BaseEmbeddingModel(ABC):
                     print(e)
                     embeddings = []
                 _all.extend(embeddings)
-        _all = self._embed(input)
-        if isinstance(input, str):
+        elif isinstance(input, str):
             input = [input]
+            try:
+                _all = self._embed(input)
+            except Exception as e:
+                print(e)
+                _all = []
         return [Embedding(vector=e, text=t)
                 for e, t in zip(_all, input)]
