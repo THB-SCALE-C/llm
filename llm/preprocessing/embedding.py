@@ -83,7 +83,7 @@ def create_embeddings_from_db(
 
         suffix = Path(doc.get("name", "")).suffix.lower()
         if suffix == ".pdf":
-            chunker: Callable[..., List[Chunk]] = pdf_buffer_to_chunks
+            chunker: Callable[..., Tuple[List[Chunk],dict]] = pdf_buffer_to_chunks
         elif suffix == ".md":
             chunker = md_buffer_to_chunks
         elif suffix == ".txt":
@@ -92,14 +92,14 @@ def create_embeddings_from_db(
             logger.debug(f"document with id {document_id} has unsupported extension '{suffix}'. Skipping...")
             continue
 
-        chunks = chunker(buffer, separator)
+        chunks,meta = chunker(buffer, separator)
         if not chunks:
             logger.debug(f"document with id {document_id} produced no chunks. Skipping...")
             continue
 
         embeddings = model.embed([chunk.text for chunk in chunks])
         secs = _build_sections(chunks, embeddings, document_id)
-        _docs.append(Document(id=document_id, sections=secs, meta={**doc, }))
+        _docs.append(Document(id=document_id, sections=secs, meta={**doc, **meta}))
         logger.debug(f"created {len(secs)} sections.")
     return _docs
 
@@ -139,23 +139,23 @@ def create_embeddings_from_local_documents(
     for i,(doc,meta) in enumerate(loaded_documents):
         suffix = Path(meta.get("name", "")).suffix.lower()
         if suffix == ".pdf":
-            chunker: Callable[..., List[Chunk]] = pdf_buffer_to_chunks
+            chunker: Callable[..., Tuple[List[Chunk],dict]] = pdf_buffer_to_chunks
         elif suffix == ".md":
             chunker = md_buffer_to_chunks
         else:
             chunker = txt_buffer_to_chunks
 
         if separator:
-            chunks = chunker(doc, separator, include_meta_in_chunks and meta, )
+            chunks,_meta = chunker(doc, separator, include_meta_in_chunks and meta, )
         else:
-            chunks = chunker(doc, meta=include_meta_in_chunks and meta)
+            chunks,_meta = chunker(doc, meta=include_meta_in_chunks and meta)
         if not chunks:
             logger.debug(f"document with id {i} produced no chunks. Skipping...")
             continue
         
         embeddings = model.embed([chunk.text for chunk in chunks])
         secs=_build_sections(list(chunks), embeddings, i)
-        docs.append(Document(id=i, sections=secs, meta=meta))
+        docs.append(Document(id=i, sections=secs, meta={**meta,**_meta}))
         logger.debug(f"created {len(secs)} sections.")
     return docs
 

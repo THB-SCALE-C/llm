@@ -1,6 +1,6 @@
 from io import BytesIO
 import re
-from typing import Any, Dict, Generator, List, Literal, TypedDict
+from typing import Any, Dict, Generator, List, Literal, Tuple, TypedDict
 from pydantic import BaseModel
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter
@@ -25,38 +25,38 @@ splitter = RecursiveCharacterTextSplitter(
 
 
 def pdf_buffer_to_chunks(buffer: bytes, separator: str | re.Pattern[str] | TextSplitter = splitter,
-                         meta: dict | Literal[False] = {},) -> List[Chunk]:
+                         meta: dict | Literal[False] = {},) -> Tuple[List[Chunk],dict]:
     pages = pdf_buffer_to_pages(buffer, meta=meta if meta is not False else {})
-    return list(_to_chunks(list(pages), separator))
+    return list(_to_chunks(list(pages), separator)),{}
 
 
 def txt_buffer_to_chunks(
     buffer: bytes,
     separator: str | re.Pattern[str] | TextSplitter = splitter,
     meta: dict | Literal[False] = {},
-) -> List[Chunk]:
+) -> Tuple[List[Chunk],dict]:
     text = buffer.decode("utf-8", errors="ignore")
     if not text:
-        return []
-    return list(_to_chunks([Chunk(id=0, text=text, meta=meta if meta is not False else {})], separator))
+        return [],{}
+    return list(_to_chunks([Chunk(id=0, text=text, meta=meta if meta is not False else {})], separator)),{}
 
 
 def md_buffer_to_chunks(
     buffer: bytes,
     separator: str | re.Pattern[str] | TextSplitter = splitter,
     meta: dict | Literal[False] = {},
-) -> List[Chunk]:
+) -> Tuple[List[Chunk],dict]:
     text = buffer.decode("utf-8", errors="ignore")
     if not text:
-        return []
+        return [],{}
+    _meta = {}
     if text.startswith("---"):
         _, meta_str, *rest = text.split("---")
         meta_items = [line.replace("\r", "").split(":", 1)
                       for line in meta_str.split("\n") if ":" in line]
-        if meta is not False:
-            meta = {**meta, **dict(meta_items)}
+        _meta = dict(meta_items)
         text = "---".join(rest)
-    return list(_to_chunks([Chunk(id=0, text=text, meta=meta if meta is not False else {})], separator))
+    return list(_to_chunks([Chunk(id=0, text=text, meta=meta if meta is not False else {})], separator)),_meta
 
 ##########
 
