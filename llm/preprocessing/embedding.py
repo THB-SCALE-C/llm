@@ -8,7 +8,6 @@ from typing import Any, Callable, Generator, List, Tuple
 from dotenv import load_dotenv
 from langchain_text_splitters import TextSplitter
 from supabase import Client
-from llm.lib.supabase import get_documents_buffers, get_storage_object, get_supabase, upload_document_sections
 from llm.lib.types import Section
 from llm.lib.utils import get_logger
 from llm.preprocessing.chunking import Chunk, md_buffer_to_chunks, pdf_buffer_to_chunks, txt_buffer_to_chunks
@@ -59,6 +58,7 @@ def create_embeddings_from_db(
     skip_existing_embeddings:bool=True,
 ) -> List[Section]:
     """Create embeddings for documents and upload section rows to Supabase."""
+    from llm.lib.supabase import get_documents_buffers, get_supabase
     client = client or get_supabase()
     logger = logger or get_logger()
 

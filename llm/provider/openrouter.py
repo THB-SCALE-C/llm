@@ -2,10 +2,9 @@ import json
 from typing import Any, Literal
 import dspy
 from dspy.utils.callback import BaseCallback
-from openai import OpenAI
 import requests
 from llm.lib.url import OPENROUTER_BASE_URL
-from llm.lib.utils import get_logger, get_provider_key
+from llm.lib.utils import get_logger
 from llm.provider.base.dspy_lm_base import DspyLM
 from llm.provider.base.embedding_model import BaseEmbeddingModel
 

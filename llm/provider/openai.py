@@ -1,10 +1,8 @@
 from typing import Any, Literal
 from dspy.utils.callback import BaseCallback
 from openai import OpenAI
-from llm.lib.utils import get_provider_key
 from llm.provider.base.dspy_lm_base import DspyLM
 from llm.provider.base.embedding_model import BaseEmbeddingModel
-import dspy
 
 
 class OpenaiEmbeddingModel(BaseEmbeddingModel):

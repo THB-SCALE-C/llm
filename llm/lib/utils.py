@@ -16,7 +16,6 @@ class Logger(_Logger):
 
     def debug(self, msg: object, *args: object, exc_info: None | bool | tuple[type[BaseException], BaseException, TracebackType | None] | tuple[None, None, None] | BaseException = None, stack_info: bool = False, stacklevel: int = 1, extra: os.Mapping[str, object] | None = None) -> None: # type: ignore
         msg = DEBUG_MSG_TEMPLATE.format(msg=msg)
-        print(msg)
         return super().debug(msg, *args, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
 
 
