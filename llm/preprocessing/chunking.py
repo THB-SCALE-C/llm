@@ -46,9 +46,10 @@ def md_buffer_to_chunks(
         return []
     if text.startswith("---"):
         _,meta_str,*rest = text.split("---") 
-        meta = {**meta, **dict([line.split(":") for line in meta_str.split("\n") if ":" in line])}
+        meta_items = [line.split(":",1) for line in meta_str.split("\n") if ":" in line]
+        meta = {**meta, **dict(meta_items)}
         text = "---".join(rest)
-    return list(_to_chunks([Chunk(id=0,text=text, meta=dict(**meta))], separator))
+    return list(_to_chunks([Chunk(id=0,text=text, meta=meta)], separator))
 
 ##########
 
@@ -63,7 +64,7 @@ def _to_chunks(pages:List[Chunk],separator:str|re.Pattern[str]|TextSplitter = sp
         else:
             splits = re.split(separator,page.text)
         for j,split in enumerate(splits):
-            yield Chunk(id=f"{i}-{j}",text=split, meta=page.meta)
+            yield Chunk(id=f"{i}-{j}",text=split, meta={"document_id":page.id,**page.meta})
 
 
 def _enhance_page_text(idx, pages:List[Chunk]):
