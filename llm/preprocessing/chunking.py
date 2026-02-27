@@ -1,9 +1,31 @@
 from io import BytesIO
+from logging import Logger
+import os
+from pathlib import Path
 import re
-from typing import Any, Dict, Generator, List, Literal, Tuple, TypedDict
+from typing import Any, Callable, Dict, Generator, List, Literal, Tuple, TypedDict
 from pydantic import BaseModel
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter
+
+from llm.lib.utils import get_logger
+
+
+def load_local_documents(path: Path, expected_extensions: set[str]) -> List[Tuple[bytes, dict]]:
+    loaded_documents = []
+    normalized_extensions = {ext.lower() for ext in expected_extensions}
+
+    def _recursively_load_files(path: Path, loaded_documents: list):
+        if path.is_dir():
+            for entry in os.scandir(path):
+                _recursively_load_files(Path(entry.path), loaded_documents)
+    
+        if path.is_file() and path.suffix.lower() in normalized_extensions:
+            with open(path, "rb") as f:
+                meta = dict(name=str(path))
+                loaded_documents.append((f.read(), meta))
+    _recursively_load_files(path, loaded_documents)
+    return loaded_documents
 
 
 class Chunk(BaseModel):
@@ -57,6 +79,39 @@ def md_buffer_to_chunks(
         _meta = dict(meta_items)
         text = "---".join(rest)
     return list(_to_chunks([Chunk(id=0, text=text, meta=meta if meta is not False else {})], separator)),_meta
+
+
+def create_chunks_from_local_documents(
+    document_folder: str | Path,
+    separator:str|re.Pattern[str]|TextSplitter|None = None,
+    logger: Logger | None = None,
+    include_meta_in_chunks:bool=False
+) -> list[dict]:
+    """Create chunks for local .pdf, .md and .txt documents."""
+    logger = logger or get_logger()
+
+    path = Path(document_folder)
+    loaded_documents: list = load_local_documents(path, {".pdf", ".md", ".txt"})
+    docs = []
+    for i,(doc,meta) in enumerate(loaded_documents):
+        suffix = Path(meta.get("name", "")).suffix.lower()
+        if suffix == ".pdf":
+            chunker: Callable[..., Tuple[List[Chunk],dict]] = pdf_buffer_to_chunks
+        elif suffix == ".md":
+            chunker = md_buffer_to_chunks
+        else:
+            chunker = txt_buffer_to_chunks
+
+        if separator:
+            chunks,_meta = chunker(doc, separator, include_meta_in_chunks and meta, )
+        else:
+            chunks,_meta = chunker(doc, meta=include_meta_in_chunks and meta)
+        if not chunks:
+            logger.debug(f"document with id {i} produced no chunks. Skipping...")
+            continue
+        docs.append(dict(id=i, chunks=chunks, meta={**meta,**_meta}))
+        logger.debug(f"created {len(chunks)} chunks.")
+    return docs
 
 ##########
 

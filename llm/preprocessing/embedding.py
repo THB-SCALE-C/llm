@@ -4,13 +4,12 @@ from pathlib import Path
 from logging import Logger
 import re
 from typing import Any, Callable, Generator, List, Tuple
-
 from dotenv import load_dotenv
 from langchain_text_splitters import TextSplitter
 from supabase import Client
 from llm.lib.types import Document, Section
 from llm.lib.utils import get_logger
-from llm.preprocessing.chunking import Chunk, md_buffer_to_chunks, pdf_buffer_to_chunks, txt_buffer_to_chunks
+from llm.preprocessing.chunking import Chunk, create_chunks_from_local_documents, md_buffer_to_chunks, pdf_buffer_to_chunks, txt_buffer_to_chunks
 from llm.provider import get_embedding_model
 from llm.provider.base.embedding_model import Embedding
 
@@ -103,21 +102,6 @@ def create_embeddings_from_db(
         logger.debug(f"created {len(secs)} sections.")
     return _docs
 
-def load_local_documents(path: Path, expected_extensions: set[str]) -> List[Tuple[bytes, dict]]:
-    loaded_documents = []
-    normalized_extensions = {ext.lower() for ext in expected_extensions}
-
-    def _recursively_load_files(path: Path, loaded_documents: list):
-        if path.is_dir():
-            for entry in os.scandir(path):
-                _recursively_load_files(Path(entry.path), loaded_documents)
-    
-        if path.is_file() and path.suffix.lower() in normalized_extensions:
-            with open(path, "rb") as f:
-                meta = dict(name=str(path))
-                loaded_documents.append((f.read(), meta))
-    _recursively_load_files(path, loaded_documents)
-    return loaded_documents
     
 
 
@@ -132,33 +116,17 @@ def create_embeddings_from_local_documents(
     """Create embeddings for local .pdf, .md and .txt documents."""
     logger = logger or get_logger()
     model = get_embedding_model(embedding_provider, embedding_model)
-
-    path = Path(document_folder)
-    loaded_documents: list = load_local_documents(path, {".pdf", ".md", ".txt"})
+    chunked_documents = create_chunks_from_local_documents(document_folder, separator, logger, include_meta_in_chunks)
     docs = []
-    for i,(doc,meta) in enumerate(loaded_documents):
-        suffix = Path(meta.get("name", "")).suffix.lower()
-        if suffix == ".pdf":
-            chunker: Callable[..., Tuple[List[Chunk],dict]] = pdf_buffer_to_chunks
-        elif suffix == ".md":
-            chunker = md_buffer_to_chunks
-        else:
-            chunker = txt_buffer_to_chunks
-
-        if separator:
-            chunks,_meta = chunker(doc, separator, include_meta_in_chunks and meta, )
-        else:
-            chunks,_meta = chunker(doc, meta=include_meta_in_chunks and meta)
-        if not chunks:
-            logger.debug(f"document with id {i} produced no chunks. Skipping...")
-            continue
-        
+    for doc in chunked_documents:  
+        chunks = doc["chunks"]
+        meta = doc["meta"]
+        id = doc["id"]
         embeddings = model.embed([chunk.text for chunk in chunks])
-        secs=_build_sections(list(chunks), embeddings, i)
-        docs.append(Document(id=i, sections=secs, meta={**meta,**_meta}))
+        secs=_build_sections(list(chunks), embeddings, id)
+        docs.append(Document(id=id, sections=secs, meta=meta))
         logger.debug(f"created {len(secs)} sections.")
     return docs
-
 
 
 def _raise_matching_error(text1, text2):
