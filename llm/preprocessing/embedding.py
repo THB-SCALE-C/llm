@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from logging import Logger
 import re
-from typing import Any, Callable, Generator, List, Tuple
+from typing import Any, Callable, List, Tuple
 from dotenv import load_dotenv
 from langchain_text_splitters import TextSplitter
 from supabase import Client

@@ -3,8 +3,7 @@ from logging import Logger
 import os
 from pathlib import Path
 import re
-from typing import Any, Callable, Dict, Generator, List, Literal, Tuple, TypedDict
-from pydantic import BaseModel
+from typing import Callable, Generator, List, Literal, Tuple
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter
 

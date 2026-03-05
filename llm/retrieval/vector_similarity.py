@@ -2,9 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 import json
 import numpy as np
-
 from supabase import Client
-from llm.lib.supabase import get_supabase, query_vector_db
 from llm.provider import get_embedding_model
 
 
@@ -12,8 +10,11 @@ def vector_search_db(queries: list[str] | str,
                      embedding_provider: str = "openrouter",
                      embedding_model: str = "sentence-transformers/all-minilm-l12-v2",
                      document_ids: list[int] | None = None,
-                     client: Client = get_supabase(),
+                     client: Client|None = None,
                      match_count=5):
+    from llm.lib.supabase import get_supabase, query_vector_db
+    if not client:
+        client = get_supabase()
     model = get_embedding_model(embedding_provider, embedding_model)
     if isinstance(queries, str):
         query_embeddings = model.embed([queries])
