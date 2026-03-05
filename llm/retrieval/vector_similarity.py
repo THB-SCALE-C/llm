@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 import json
 import numpy as np
 from supabase import Client
@@ -36,31 +36,37 @@ def vector_search_local(queries: list[str] | str,
                         corpus: Path | str,
                         embedding_provider: str = "openrouter",
                         embedding_model: str = "sentence-transformers/all-minilm-l12-v2",
-                        match_count=5):
+                        match_count=5,
+                        threshold:None|float=None) :
     model = get_embedding_model(embedding_provider, embedding_model)
     corpus = Path(corpus)
     if isinstance(queries, str):
         query_embeddings = model.embed([queries])
         query_vector = query_embeddings[0].vector
         results = query_local_corpus(
-            corpus=corpus, query_embedding=query_vector, match_count=match_count)
+            corpus=corpus, query_embedding=query_vector, match_count=match_count, threshold=threshold)
     else:
         results = []
         query_embeddings = model.embed(queries)
         for em in query_embeddings:
             query_vector = em.vector
             result = query_local_corpus(
-                corpus=corpus, query_embedding=query_vector, match_count=match_count)
+                corpus=corpus, query_embedding=query_vector, match_count=None, threshold=threshold)
             results.extend(result)
+        results = sorted(
+            results,
+            key=lambda x: x[1],
+            reverse=True
+        )[:match_count]
     return results
 
 
 def query_local_corpus(
     corpus: Path,
     query_embedding: List[float],
-    match_count: int,
+    match_count: int|None = 5,
     threshold:float|None = None
-) -> List[Dict[str, Any]]:
+) -> List[Tuple[Dict[str, Any], float]]:
     """
     Return up to `match_count` corpus items with highest cosine similarity to query_embedding.
     Each returned dict is the original item with an added "similarity" float key.
@@ -80,11 +86,13 @@ def query_local_corpus(
                 continue
             similarities.append((data, sim))
 
-        return sorted(
-            similarities,
-            key=lambda x: x[1],
-            reverse=True
-        )[:match_count]
+        if match_count:
+            return sorted(
+                similarities,
+                key=lambda x: x[1],
+                reverse=True
+            )[:match_count]
+        return similarities
 
 
 def _calculate_cosine_similarity(a: List[float], b: List[float]) -> float:
