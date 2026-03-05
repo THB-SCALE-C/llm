@@ -53,11 +53,15 @@ def vector_search_local(queries: list[str] | str,
             result = query_local_corpus(
                 corpus=corpus, query_embedding=query_vector, match_count=None, threshold=threshold)
             results.extend(result)
-        results = sorted(
+        _results = sorted(
             results,
             key=lambda x: x[1],
             reverse=True
-        )[:match_count]
+        )
+        results = []
+        for r,sim in _results:
+            if r not in [x for x,_ in results]:
+                results.append((r,sim))
     return results
 
 
