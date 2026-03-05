@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict, List
-import heapq
 import json
-import math
 import numpy as np
 
 from supabase import Client
@@ -34,12 +32,12 @@ def vector_search_db(queries: list[str] | str,
 
 
 def vector_search_local(queries: list[str] | str,
-                        corpus: Path | List[Any],
+                        corpus: Path | str,
                         embedding_provider: str = "openrouter",
                         embedding_model: str = "sentence-transformers/all-minilm-l12-v2",
                         match_count=5):
     model = get_embedding_model(embedding_provider, embedding_model)
-    corpus = _load_corpus(corpus) if isinstance(corpus, Path) else corpus
+    corpus = Path(corpus)
     if isinstance(queries, str):
         query_embeddings = model.embed([queries])
         query_vector = query_embeddings[0].vector
@@ -56,46 +54,54 @@ def vector_search_local(queries: list[str] | str,
     return results
 
 
-def _load_corpus(corpus) -> List[Any]:
-    with open(corpus) as f:
-        return json.load(f)
-
-
 def query_local_corpus(
-    corpus: List[Dict[str, Any]],
+    corpus: Path,
     query_embedding: List[float],
     match_count: int,
+    threshold:float|None = None
 ) -> List[Dict[str, Any]]:
     """
     Return up to `match_count` corpus items with highest cosine similarity to query_embedding.
     Each returned dict is the original item with an added "similarity" float key.
     Items with missing or zero embeddings are ignored.
+    threshold allows to keep only similar embeddings.
     """
-    # collect items that actually have an embedding
-    items = [el for el in corpus if el.get("embedding") is not None]
-    if not items or match_count <= 0:
-        return []
+    similarities = []
+    with open(corpus) as f:
+        for i, line in enumerate(f.readlines()):
+            data = json.loads(line)
+            embedding = data.get("embedding")
+            if not embedding:
+                print(f"ERROR NO EMBEDDING FOUND IN LINE {i}")
+                continue
+            sim = _calculate_cosine_similarity(query_embedding, embedding)
+            if threshold and sim<threshold:
+                continue
+            similarities.append((data, sim))
 
-    emb_array = np.asarray([el["embedding"] for el in items], dtype=np.float32)
-    q = np.asarray(query_embedding, dtype=np.float32)
+        return sorted(
+            similarities,
+            key=lambda x: x[1],
+            reverse=True
+        )[:match_count]
 
-    q_norm = np.linalg.norm(q)
-    if q_norm == 0:
-        return []
 
-    emb_norms = np.linalg.norm(emb_array, axis=1)
-    valid = emb_norms > 0
+def _calculate_cosine_similarity(a: List[float], b: List[float]) -> float:
+    """
+    Compute cosine similarity between two embedding vectors.
 
-    sims = np.zeros(len(items), dtype=np.float32)
-    if valid.any():
-        # efficient dot product across rows
-        sims[valid] = (emb_array[valid] @ q) / (emb_norms[valid] * q_norm)
+    Args:
+        a (np.ndarray): 1D embedding vector
+        b (np.ndarray): 1D embedding vector
 
-    k = min(match_count, len(sims))
-    if k == 0:
-        return []
+    Returns:
+        float: cosine similarity score
+    """
+    a_vec = np.asarray(a, dtype=np.float32)
+    b_vec = np.asarray(b, dtype=np.float32)
 
-    top_idx = np.argpartition(sims, -k)[-k:]
-    top_idx = top_idx[np.argsort(sims[top_idx])[::-1]]
+    denom = np.linalg.norm(a_vec) * np.linalg.norm(b_vec)
+    if denom == 0:
+        return 0.0
 
-    return [{**items[i], "similarity": float(sims[i])} for i in top_idx]
+    return float(np.dot(a_vec, b_vec) / denom)
