@@ -13,4 +13,4 @@ class DspyLM(dspy.LM):
         if key is None:
             key = get_provider_key(provider)
         super().__init__(f"{model_prefix}{model}", model_type, temperature, max_tokens, cache, callbacks,
-                         num_retries, None, finetuning_model, launch_kwargs, train_kwargs, use_developer_role, **kwargs)
+                         num_retries, None, finetuning_model, launch_kwargs, train_kwargs, use_developer_role, api_key=key, **kwargs)
