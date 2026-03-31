@@ -1,6 +1,6 @@
 [project]
 name = "llm"
-version = "0.3.0"
+version = "0.3.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -9,6 +9,7 @@ dependencies = [
     "dspy>=3.1.2",
     "google-genai>=1.60.0",
     "langchain-text-splitters>=1.1.1",
+    "ollama>=0.6.1",
     "pgvector>=0.4.2",
     "pip>=26.0.1",
     "pypdf>=6.6.0",

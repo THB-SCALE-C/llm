@@ -10,7 +10,7 @@ def vector_search_db(queries: list[str] | str,
                      embedding_provider: str = "openrouter",
                      embedding_model: str = "sentence-transformers/all-minilm-l12-v2",
                      document_ids: list[int] | None = None,
-                     client: Client|None = None,
+                     client: Client | None = None,
                      match_count=5):
     from llm.lib.supabase import get_supabase, query_vector_db
     if not client:
@@ -37,13 +37,17 @@ def vector_search_local(queries: list[str] | str,
                         embedding_provider: str = "openrouter",
                         embedding_model: str = "sentence-transformers/all-minilm-l12-v2",
                         match_count=5,
-                        threshold:None|float=None) :
+                        threshold: None | float = None,
+                        embedding_key: str = "embedding"
+
+                        ):
     model = get_embedding_model(embedding_provider, embedding_model)
     corpus = Path(corpus)
     if isinstance(queries, str):
         query_embeddings = model.embed([queries])
         query_vector = query_embeddings[0].vector
         results = query_local_corpus(
+            embedding_key=embedding_key,
             corpus=corpus, query_embedding=query_vector, match_count=match_count, threshold=threshold)
     else:
         results = []
@@ -51,6 +55,7 @@ def vector_search_local(queries: list[str] | str,
         for em in query_embeddings:
             query_vector = em.vector
             result = query_local_corpus(
+                embedding_key=embedding_key,
                 corpus=corpus, query_embedding=query_vector, match_count=None, threshold=threshold)
             results.extend(result)
         _results = sorted(
@@ -59,34 +64,36 @@ def vector_search_local(queries: list[str] | str,
             reverse=True
         )
         results = []
-        for r,sim in _results:
-            if r not in [x for x,_ in results]:
-                results.append((r,sim))
+        for r, sim in _results:
+            if r not in [x for x, _ in results]:
+                results.append((r, sim))
     return results
 
 
 def query_local_corpus(
     corpus: Path,
     query_embedding: List[float],
-    match_count: int|None = 5,
-    threshold:float|None = None
+    match_count: int | None = 5,
+    threshold: float | None = None,
+    embedding_key: str = "embedding"
 ) -> List[Tuple[Dict[str, Any], float]]:
     """
     Return up to `match_count` corpus items with highest cosine similarity to query_embedding.
     Each returned dict is the original item with an added "similarity" float key.
     Items with missing or zero embeddings are ignored.
     threshold allows to keep only similar embeddings.
+    Corpus entries must have embeddings
     """
     similarities = []
     with open(corpus) as f:
         for i, line in enumerate(f.readlines()):
             data = json.loads(line)
-            embedding = data.get("embedding")
+            embedding = data.get(embedding_key)
             if not embedding:
                 print(f"ERROR NO EMBEDDING FOUND IN LINE {i}")
                 continue
             sim = _calculate_cosine_similarity(query_embedding, embedding)
-            if threshold and sim<threshold:
+            if threshold and sim < threshold:
                 continue
             similarities.append((data, sim))
 

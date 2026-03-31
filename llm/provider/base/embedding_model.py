@@ -16,10 +16,10 @@ class Embedding(BaseModel):
 
 
 class BaseEmbeddingModel(ABC):
-    def __init__(self, provider: PROVIDER, model: str, key=None) -> None:
+    def __init__(self, provider: PROVIDER|None, model: str, key=None) -> None:
         self.model = model
         self.provider = provider
-        self.key = key if key else get_provider_key(provider)
+        self.key = key if key else get_provider_key(provider) if provider else None
 
     @abstractmethod
     def _embed(self, input: list[str]) -> list[list[float]]:
