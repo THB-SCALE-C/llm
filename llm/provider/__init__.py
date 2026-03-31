@@ -1,6 +1,8 @@
 
 
 
+from llm.provider.ollama import OllamaEmbeddingModel
+
 from .google import GoogleEmbeddingModel
 from .openai import OpenaiEmbeddingModel
 from .openrouter import OpenrouterEmbeddingModel
@@ -13,6 +15,8 @@ def get_embedding_model(provider:str, model:str):
         _model = OpenaiEmbeddingModel(model)
     elif provider == "google":
         _model = GoogleEmbeddingModel(model)
+    elif provider == "ollama":
+        _model = OllamaEmbeddingModel(model)
     else:
         raise ValueError("Embedding provider not found.")
     return _model
