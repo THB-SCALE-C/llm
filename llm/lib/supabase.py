@@ -215,6 +215,8 @@ def query_vector_db(
 def query_text_search(
     query: str,
     client: Client | None = None,
+    corpus_id:int|None=None,
+    experiment_id:int|None=None,
     document_ids: list[int] | None = None,
     match_count: int | None = None,
 ) -> list[dict[str, Any]]:
@@ -224,13 +226,16 @@ def query_text_search(
     query example: "'phishing' & 'malware'" where `&` and `|` are logical operators.
     """
     client = _resolve_client(client)
-    request = client.from_("document_sections").select("*").text_search("content", query)
+    request = client.from_("document_sections").select("*")
     if document_ids:
         request = request.in_("document_id", document_ids)
-    if match_count:
-        request = request.limit(match_count)
-    response = request.execute()
-    return response.data or []
+    if corpus_id:
+        request = request.eq("corpus_id", corpus_id)
+    if experiment_id:
+        request = request.eq("experiment_id", experiment_id)
+    request = request.text_search("content", query)
+    data = request.execute().data
+    return data[:match_count] if match_count else data
 
 
 # ------------------------
