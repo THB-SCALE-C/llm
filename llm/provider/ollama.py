@@ -38,6 +38,6 @@ class OllamaLM(DspyLM):
         
         print("ensuring model...")
         ensure_model(model)
-        api_base = OLLAMA_REMOTE
+        api_base = f"{OLLAMA_REMOTE}/v1"
         super().__init__(None, model, key, "ollama_chat/", model_type, temperature, max_tokens, cache, callbacks,
                          num_retries, finetuning_model, launch_kwargs, train_kwargs, use_developer_role, api_base=api_base, **kwargs)
