@@ -1,8 +1,18 @@
+"""Deprecated OpenAI provider module."""
+
+import warnings
 from typing import Any, Literal
 from dspy.utils.callback import BaseCallback
 from openai import OpenAI
 from llm.provider.base.dspy_lm_base import DspyLM
 from llm.provider.base.embedding_model import BaseEmbeddingModel
+
+
+warnings.warn(
+    "llm.provider.openai is deprecated and will be removed in a future release.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class OpenaiEmbeddingModel(BaseEmbeddingModel):
