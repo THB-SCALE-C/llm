@@ -22,8 +22,7 @@ class DenseSupabaseRetriever(BaseRetriever):
         docs: list[Document] = []
         for row in rows:
             metadata = dict(row.get("meta") or {})
-            metadata["id"] = row.get("id")
-            metadata["similarity"] = row.get("similarity")
+            metadata.update(row)
             docs.append(Document(page_content=row.get("content", ""), metadata=metadata))
         return docs
 

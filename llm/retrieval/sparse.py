@@ -38,10 +38,7 @@ class SparseSupabaseRetriever(BaseRetriever):
         docs: list[Document] = []
         for row in rows[: self.match_count]:
             metadata = dict(row.get("meta") or {})
-            if "id" in row:
-                metadata["id"] = row["id"]
-            if "document_id" in row:
-                metadata["document_id"] = row["document_id"]
+            metadata.update(row)
             docs.append(Document(page_content=row.get("content", ""), metadata=metadata))
         return docs
 
